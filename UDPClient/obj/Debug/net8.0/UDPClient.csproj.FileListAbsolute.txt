@@ -1,0 +1,14 @@
+C:\Users\student\RiderProjects\UDPClient\UDPClient\bin\Debug\net8.0\UDPClient.exe
+C:\Users\student\RiderProjects\UDPClient\UDPClient\bin\Debug\net8.0\UDPClient.deps.json
+C:\Users\student\RiderProjects\UDPClient\UDPClient\bin\Debug\net8.0\UDPClient.runtimeconfig.json
+C:\Users\student\RiderProjects\UDPClient\UDPClient\bin\Debug\net8.0\UDPClient.dll
+C:\Users\student\RiderProjects\UDPClient\UDPClient\bin\Debug\net8.0\UDPClient.pdb
+C:\Users\student\RiderProjects\UDPClient\UDPClient\obj\Debug\net8.0\UDPClient.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\student\RiderProjects\UDPClient\UDPClient\obj\Debug\net8.0\UDPClient.AssemblyInfoInputs.cache
+C:\Users\student\RiderProjects\UDPClient\UDPClient\obj\Debug\net8.0\UDPClient.AssemblyInfo.cs
+C:\Users\student\RiderProjects\UDPClient\UDPClient\obj\Debug\net8.0\UDPClient.csproj.CoreCompileInputs.cache
+C:\Users\student\RiderProjects\UDPClient\UDPClient\obj\Debug\net8.0\UDPClient.dll
+C:\Users\student\RiderProjects\UDPClient\UDPClient\obj\Debug\net8.0\refint\UDPClient.dll
+C:\Users\student\RiderProjects\UDPClient\UDPClient\obj\Debug\net8.0\UDPClient.pdb
+C:\Users\student\RiderProjects\UDPClient\UDPClient\obj\Debug\net8.0\UDPClient.genruntimeconfig.cache
+C:\Users\student\RiderProjects\UDPClient\UDPClient\obj\Debug\net8.0\ref\UDPClient.dll
