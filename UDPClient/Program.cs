@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Timers;
+using System.Linq;
+using Timer = System.Timers.Timer;
 
 namespace UDPServer
 {
@@ -28,33 +31,59 @@ namespace UDPServer
             { "ssd 1tb", 3500.00m }
         };
 
+        class ClientActivity
+        {
+            public DateTime LastActivity { get; set; }
+            public int RequestCount { get; set; }
+            public DateTime CounterResetTime { get; set; }
+        }
+
+        static Dictionary<string, ClientActivity> clientsActivity = new Dictionary<string, ClientActivity>();
+
+        const int MAX_CLIENTS = 100;
+        const int MAX_REQUESTS_PER_HOUR = 10;
+        const int INACTIVITY_TIMEOUT_MINUTES = 10;
+
         static void Main(string[] args)
         {
             UdpClient server = new UdpClient(5555);
             Console.OutputEncoding = Encoding.UTF8;
-            
+
             Console.WriteLine("UDP сервер запущено на порті 5555");
             Console.WriteLine("Очікування запитів від клієнтів...");
 
-            // Очікування та обробка запитів від клієнтів
+            Timer inactivityTimer = new Timer(30000); // перевірка кожні 30 секунд
+            inactivityTimer.Elapsed += CheckInactiveClients;
+            inactivityTimer.AutoReset = true;
+            inactivityTimer.Enabled = true;
+
             while (true)
             {
                 try
                 {
-                    // Отримання даних від клієнта
                     IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 0);
                     byte[] receivedBytes = server.Receive(ref clientEndPoint);
                     string request = Encoding.UTF8.GetString(receivedBytes);
+                    string clientKey = clientEndPoint.ToString();
 
                     Console.WriteLine($"Отримано запит від {clientEndPoint}: {request}");
 
-                    // Обробка запиту та підготовка відповіді
+                    string limitMessage = CheckClientLimits(clientKey);
+                    
+                    if (!string.IsNullOrEmpty(limitMessage))
+                    {
+                        // Якщо клієнт перевищив ліміт, надсилаємо повідомлення про обмеження
+                        byte[] limitResponse = Encoding.UTF8.GetBytes(limitMessage);
+                        server.Send(limitResponse, limitResponse.Length, clientEndPoint);
+                        Console.WriteLine($"Обмеження для клієнта {clientEndPoint}: {limitMessage}");
+                        continue;
+                    }
+
                     string response = ProcessRequest(request);
 
-                    // Надсилання відповіді клієнту
                     byte[] responseBytes = Encoding.UTF8.GetBytes(response);
                     server.Send(responseBytes, responseBytes.Length, clientEndPoint);
-                    
+
                     Console.WriteLine($"Надіслано відповідь: {response}");
                 }
                 catch (Exception ex)
@@ -64,19 +93,79 @@ namespace UDPServer
             }
         }
 
+        static string CheckClientLimits(string clientKey)
+        {
+            DateTime now = DateTime.Now;
+
+            if (!clientsActivity.ContainsKey(clientKey))
+            {
+                if (clientsActivity.Count >= MAX_CLIENTS)
+                {
+                    return "Сервер досяг максимальної кількості підключень. Спробуйте пізніше.";
+                }
+
+                clientsActivity[clientKey] = new ClientActivity
+                {
+                    LastActivity = now,
+                    RequestCount = 1,
+                    CounterResetTime = now.AddHours(1)
+                };
+                return null;
+            }
+
+            // Оновлення часу останньої активності
+            ClientActivity activity = clientsActivity[clientKey];
+            activity.LastActivity = now;
+
+            if (now > activity.CounterResetTime)
+            {
+                activity.RequestCount = 1;
+                activity.CounterResetTime = now.AddHours(1);
+            }
+            else
+            {
+                if (activity.RequestCount >= MAX_REQUESTS_PER_HOUR)
+                {
+                    TimeSpan timeLeft = activity.CounterResetTime - now;
+                    return $"Перевищено ліміт запитів. Спробуйте через {timeLeft.Minutes} хвилин і {timeLeft.Seconds} секунд.";
+                }
+                activity.RequestCount++;
+            }
+
+            return null;
+        }
+
+        // Перевірка неактивних клієнтів
+        static void CheckInactiveClients(object sender, ElapsedEventArgs e)
+        {
+            DateTime now = DateTime.Now;
+            List<string> clientsToRemove = new List<string>();
+
+            foreach (var client in clientsActivity)
+            {
+                TimeSpan inactiveTime = now - client.Value.LastActivity;
+                if (inactiveTime.TotalMinutes >= INACTIVITY_TIMEOUT_MINUTES)
+                {
+                    clientsToRemove.Add(client.Key);
+                }
+            }
+
+            foreach (string clientKey in clientsToRemove)
+            {
+                clientsActivity.Remove(clientKey);
+                Console.WriteLine($"Клієнт {clientKey} відключений через неактивність");
+            }
+        }
+
         // Метод для обробки запиту та формування відповіді
         static string ProcessRequest(string request)
         {
-            // Переведення запиту в нижній регістр для уникнення проблем зі співставленням
             string normalizedRequest = request.ToLower().Trim();
 
-            // Перевірка, чи запит про ціну
             if (normalizedRequest.StartsWith("ціна"))
             {
-                // Виділення назви компонента з запиту (видаляємо "ціна" на початку)
                 string componentName = normalizedRequest.Substring(4).Trim();
 
-                // Пошук компонента у базі даних
                 foreach (var component in computerComponents)
                 {
                     if (component.Key.Contains(componentName) || componentName.Contains(component.Key))
@@ -89,7 +178,6 @@ namespace UDPServer
             }
             else if (normalizedRequest == "список" || normalizedRequest == "list")
             {
-                // Повернення списку всіх компонентів
                 StringBuilder sb = new StringBuilder("Доступні компоненти:\n");
                 foreach (var component in computerComponents)
                 {
@@ -97,6 +185,7 @@ namespace UDPServer
                 }
                 return sb.ToString();
             }
+            
             return "Невідомий запит. Використовуйте формат: 'ціна [назва товару]' або 'список'";
         }
     }
